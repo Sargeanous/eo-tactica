@@ -1,28 +1,123 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { CalendarClock, Flag, FileCheck2, Wallet } from "lucide-react";
 import { useProjectKpis } from "@/hooks/api/projects";
 import { useRequirementLines } from "@/hooks/api/requirement-lines";
-import { StatusTile } from "@/components/origen/StatusTile";
+import { useProjects } from "@/hooks/api/projects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { formatAed } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { formatAed, cn } from "@/lib/utils";
+
+interface ProjectMetadata {
+  ownerName?: string;
+  ownerEmail?: string;
+  lastUpdated?: string;
+  source?: string;
+}
+
+interface LineMetadataLite {
+  subtitle?: string;
+  badge?: string;
+}
+
+interface KpiCardProps {
+  label: string;
+  primary: string;
+  hint?: string;
+  icon: typeof Wallet;
+  href: string;
+  tone: "ok" | "warn" | "alert";
+}
+
+const TONE_BORDER = {
+  ok: "border-brand-300/40 bg-brand-50",
+  warn: "border-status-warn/30 bg-status-warn/5",
+  alert: "border-status-danger/30 bg-status-danger/5",
+};
+const TONE_TEXT = {
+  ok: "text-brand-700",
+  warn: "text-status-warn",
+  alert: "text-status-danger",
+};
+
+function KpiCard({ label, primary, hint, icon: Icon, href, tone }: KpiCardProps) {
+  return (
+    <Link
+      to={href}
+      className={cn(
+        "rounded-lg border p-4 transition hover:shadow-sm block",
+        TONE_BORDER[tone],
+      )}
+    >
+      <div className="flex items-start justify-between">
+        <div className="text-[11px] uppercase tracking-wider text-ink-700">
+          {label}
+        </div>
+        <Icon size={14} className="text-ink-500" />
+      </div>
+      <div className={cn("mt-2 text-3xl font-semibold", TONE_TEXT[tone])}>
+        {primary}
+      </div>
+      {hint && (
+        <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+      )}
+    </Link>
+  );
+}
 
 export default function CommandCenter() {
   const { t } = useTranslation();
   const kpis = useProjectKpis();
   const lines = useRequirementLines();
+  const projects = useProjects();
+
+  const project = projects.data?.items[0];
+  const projMeta = (project?.metadata ?? {}) as ProjectMetadata;
+
+  // Derive the upcoming-quotes hint from the live lines list.
+  const upcomingHints = (lines.data?.items ?? [])
+    .filter((l) => {
+      const md = (l.metadata ?? {}) as LineMetadataLite;
+      return !!md.badge && l.status !== "delivered";
+    })
+    .map((l) => {
+      const md = (l.metadata ?? {}) as LineMetadataLite;
+      return `${l.code} · ${md.badge}`;
+    });
 
   return (
-    <div className="p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-brand-900">
-          {t("pages.commandCenter.title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {t("pages.commandCenter.subtitle")}
-        </p>
+    <div className="p-6 space-y-6 max-w-7xl">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-brand-900">
+            {project?.name ?? "TACTICA Project Dashboard"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {project?.description ?? t("pages.commandCenter.subtitle")}
+          </p>
+        </div>
+        <div className="text-right text-xs text-muted-foreground">
+          {projMeta.lastUpdated && (
+            <div>
+              Last updated{" "}
+              <span className="font-medium text-foreground">
+                {projMeta.lastUpdated}
+              </span>
+            </div>
+          )}
+          {projMeta.ownerName && (
+            <div>
+              Owner {projMeta.ownerName}
+              {projMeta.ownerEmail && (
+                <>
+                  {" · "}
+                  <span className="text-brand-700">{projMeta.ownerEmail}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {kpis.isLoading ? (
@@ -33,33 +128,41 @@ export default function CommandCenter() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatusTile
-            label={t("pages.commandCenter.kpiConfirmedQuote")}
-            status="ok"
+          <KpiCard
+            label="Confirmed Quote (R1)"
+            primary={formatAed(kpis.data?.confirmedQuoteAed ?? 0)}
+            hint="Imagery $1.45M + CV $2.37M"
             icon={Wallet}
-            metric={formatAed(kpis.data?.confirmedQuoteAed ?? 0)}
-            href="/project"
+            href="/r1"
+            tone="ok"
           />
-          <StatusTile
-            label={t("pages.commandCenter.kpiInvoiced")}
-            status="ok"
+          <KpiCard
+            label="Invoiced"
+            primary={formatAed(kpis.data?.invoicedAed ?? 0)}
+            hint="R1 Imagery WO · Awaiting Customer Payment"
             icon={FileCheck2}
-            metric={formatAed(kpis.data?.invoicedAed ?? 0)}
-            href="/project"
+            href="/r1"
+            tone="ok"
           />
-          <StatusTile
-            label={t("pages.commandCenter.kpiUpcomingQuotes")}
-            status="warn"
+          <KpiCard
+            label="Upcoming Quotes"
+            primary="This Week"
+            hint={
+              upcomingHints.length > 0
+                ? upcomingHints.join("  ·  ")
+                : "R2 · WO Wed · R3 · Fri · R4 / R5 · Scope TBD"
+            }
             icon={CalendarClock}
-            metric={String(kpis.data?.upcomingQuotesCount ?? 0)}
             href="/project"
+            tone="warn"
           />
-          <StatusTile
-            label={t("pages.commandCenter.kpiHighPriorityAsks")}
-            status="alert"
+          <KpiCard
+            label="High-Priority Asks"
+            primary={String(kpis.data?.highPriorityAsks ?? 0)}
+            hint="Red-flag items needing immediate action"
             icon={Flag}
-            metric={String(kpis.data?.highPriorityAsks ?? 0)}
             href="/collab"
+            tone="alert"
           />
         </div>
       )}
@@ -68,32 +171,59 @@ export default function CommandCenter() {
         {lines.isLoading ? (
           <Skeleton className="h-48 w-full" />
         ) : (
-          <div className="space-y-3">
-            {(lines.data?.items ?? []).map((line) => (
+          (lines.data?.items ?? []).map((line) => {
+            const md = (line.metadata ?? {}) as LineMetadataLite;
+            return (
               <Link
                 key={line.id}
                 to={`/${line.code.toLowerCase()}`}
                 className="block rounded-lg border border-border bg-background p-4 hover:shadow-sm"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Badge variant="outline" className="font-mono">
                     {line.code}
                   </Badge>
                   <div className="font-medium">{line.name}</div>
-                  <div className="ml-auto text-sm text-muted-foreground">
-                    {formatAed(line.contractValueAed)}
+                  {md.subtitle && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-brand-100 text-brand-900 border-brand-300/40 text-[11px]"
+                    >
+                      {md.subtitle}
+                    </Badge>
+                  )}
+                  <div className="ml-auto flex items-center gap-3 text-sm">
+                    {line.contractValueAed > 0 && (
+                      <span className="text-brand-700 font-semibold">
+                        {formatAed(line.contractValueAed)}
+                      </span>
+                    )}
+                    {md.badge && (
+                      <span className="text-status-warn font-semibold">
+                        {md.badge}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                   <Progress value={line.progressPct} className="h-1.5 flex-1" />
                   <span>{line.progressPct.toFixed(0)}%</span>
-                  {line.nextMilestone && <span>· {line.nextMilestone}</span>}
                 </div>
               </Link>
-            ))}
-          </div>
+            );
+          })
         )}
       </section>
+
+      {projMeta.source && (
+        <footer className="pt-4 text-xs text-muted-foreground border-t border-border">
+          Status snapshot generated{" "}
+          <span className="font-medium text-foreground">
+            {projMeta.lastUpdated}
+          </span>{" "}
+          · Source: {projMeta.source}
+        </footer>
+      )}
     </div>
   );
 }

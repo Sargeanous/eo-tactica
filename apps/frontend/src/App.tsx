@@ -38,7 +38,7 @@ export default function App() {
             }
           />
           <Route
-            path="/line1"
+            path="/r1"
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Line1 />
@@ -46,7 +46,7 @@ export default function App() {
             }
           />
           <Route
-            path="/line2"
+            path="/r2"
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Line2 />
@@ -54,7 +54,7 @@ export default function App() {
             }
           />
           <Route
-            path="/line3"
+            path="/r3"
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Line3 />
@@ -62,7 +62,7 @@ export default function App() {
             }
           />
           <Route
-            path="/line4"
+            path="/r4"
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Line4 />
@@ -70,7 +70,7 @@ export default function App() {
             }
           />
           <Route
-            path="/line5"
+            path="/r5"
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Line5 />

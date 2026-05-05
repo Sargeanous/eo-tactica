@@ -21,11 +21,11 @@ export const paletteEvent = new EventTarget();
 const QUICK_LINKS: Array<{ label: string; href: string }> = [
   { label: "Command Center", href: "/" },
   { label: "Project Overview", href: "/project" },
-  { label: "R1 · CV + Imagery", href: "/line1" },
-  { label: "R2 · Platform Modules", href: "/line2" },
-  { label: "R3 · Vendor APIs", href: "/line3" },
-  { label: "R4 · GSA Platform", href: "/line4" },
-  { label: "R5 · SIGINT", href: "/line5" },
+  { label: "R1 · CV + Imagery", href: "/r1" },
+  { label: "R2 · Platform Modules", href: "/r2" },
+  { label: "R3 · Vendor APIs", href: "/r3" },
+  { label: "R4 · GSA Platform", href: "/r4" },
+  { label: "R5 · SIGINT", href: "/r5" },
   { label: "Tickets", href: "/collab" },
 ];
 

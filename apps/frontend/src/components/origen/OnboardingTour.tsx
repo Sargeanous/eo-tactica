@@ -24,7 +24,7 @@ const STEPS: TourStep[] = [
   {
     id: "lines",
     Icon: Layers,
-    navigateTo: "/line1",
+    navigateTo: "/r1",
     bulletCount: 3,
   },
   {

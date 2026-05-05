@@ -41,11 +41,11 @@ const GROUPS: NavGroup[] = [
   {
     labelKey: "nav.groupRequirements",
     items: [
-      { to: "/line1", labelKey: "nav.line1", icon: Satellite },
-      { to: "/line2", labelKey: "nav.line2", icon: ScanLine },
-      { to: "/line3", labelKey: "nav.line3", icon: Network },
-      { to: "/line4", labelKey: "nav.line4", icon: Telescope },
-      { to: "/line5", labelKey: "nav.line5", icon: Radio },
+      { to: "/r1", labelKey: "nav.line1", icon: Satellite },
+      { to: "/r2", labelKey: "nav.line2", icon: ScanLine },
+      { to: "/r3", labelKey: "nav.line3", icon: Network },
+      { to: "/r4", labelKey: "nav.line4", icon: Telescope },
+      { to: "/r5", labelKey: "nav.line5", icon: Radio },
     ],
   },
   {

@@ -1,0 +1,23 @@
+{
+  "name": "@eo-tactica/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc -b --noEmit",
+    "lint": "echo 'no lint configured'",
+    "typecheck": "tsc -b --noEmit",
+    "test": "echo 'no tests'"
+  },
+  "dependencies": {
+    "@eo-tactica/observability": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

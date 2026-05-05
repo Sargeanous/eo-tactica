@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: eo-tactica-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eo
+      POSTGRES_PASSWORD: eo_dev_pw
+      POSTGRES_DB: eo_tactica
+    ports:
+      - "5432:5432"
+    volumes:
+      - eo_tactica_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eo -d eo_tactica"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: eo-tactica-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # Optional: enable if EO-TACTICA needs the MQTT telemetry simulator.
+  # mosquitto:
+  #   image: eclipse-mosquitto:2
+  #   container_name: eo-tactica-mosquitto
+  #   ports:
+  #     - "1883:1883"
+  #   volumes:
+  #     - ./mosquitto:/mosquitto/config
+
+volumes:
+  eo_tactica_pg:

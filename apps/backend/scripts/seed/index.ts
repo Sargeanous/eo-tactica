@@ -23,12 +23,59 @@ interface ContentSection {
   note?: string;
 }
 
+interface InteractiveImageryBlock {
+  type: "imagery_commercial";
+  heading: string;
+  baseline: {
+    operators: Array<{
+      id: string;
+      label: string;
+      badge: string;
+      scenes: number;
+      ratePerScene: number;
+    }>;
+    listPrice: number;
+    vatPct: number;
+  };
+  note?: string;
+}
+
+interface InteractiveAlgorithmBlock {
+  type: "algorithm_commercial";
+  heading: string;
+  baseline: {
+    batches: Array<{
+      label: string;
+      rows: Array<{ group: string; types: number; pricePerType: number }>;
+    }>;
+  };
+  bullets?: string[];
+}
+
+interface InteractiveVendorBlock {
+  type: "vendor_commercial";
+  heading: string;
+  baseline: {
+    integratedEast: number;
+    inDev: number;
+    pricePerVendor: number;
+    westernVendors: number;
+  };
+  bullets?: string[];
+}
+
+type InteractiveBlock =
+  | InteractiveImageryBlock
+  | InteractiveAlgorithmBlock
+  | InteractiveVendorBlock;
+
 interface Workstream {
   code: string; // "A", "B", "C"
   name: string;
   status: string; // "DELIVERED", "PARTIALLY DELIVERED", ...
   statusTone: "ok" | "warn" | "alert" | "neutral";
   sections: ContentSection[];
+  interactive?: InteractiveBlock[];
 }
 
 interface KeyAsk {
@@ -127,36 +174,39 @@ const SEED_LINES: SeedLine[] = [
                 { Bucket: "> 48h", Share: "2.8%" },
               ],
             },
+          ],
+          interactive: [
             {
-              heading: "Commercial Logic",
-              rows: [
-                {
-                  Source: "Optical Op1",
-                  Note: "Emergency <12h · $6,500/sc effective",
-                  Scenes: 29,
-                  Final: "$188,500",
-                },
-                {
-                  Source: "SAR Op1",
-                  Note: "Urgent <28h · $5,000/sc effective",
-                  Scenes: 238,
-                  Final: "$1,190,000",
-                },
-                {
-                  Source: "SAR Op2",
-                  Note: "Urgent <24h · $5,000/sc effective",
-                  Scenes: 14,
-                  Final: "$70,000",
-                },
-                { Source: "Total", Note: "", Scenes: 281, Final: "$1,448,500" },
-              ],
-              kvs: [
-                { label: "Total List Price", value: "$2,032,241" },
-                { label: "One-shot Discount", value: "−$583,741" },
-                { label: "Final (ex-VAT)", value: "$1,448,500" },
-                { label: "Incl. 5% VAT", value: "$1,520,925" },
-              ],
-              note: "Volume procurement saved customer $584K (29% off list price)",
+              type: "imagery_commercial",
+              heading: "Commercial Logic (interactive)",
+              baseline: {
+                operators: [
+                  {
+                    id: "optical_op1",
+                    label: "Optical Op1",
+                    badge: "Emergency <12h",
+                    scenes: 29,
+                    ratePerScene: 6500,
+                  },
+                  {
+                    id: "sar_op1",
+                    label: "SAR Op1",
+                    badge: "Urgent <28h",
+                    scenes: 238,
+                    ratePerScene: 5000,
+                  },
+                  {
+                    id: "sar_op2",
+                    label: "SAR Op2",
+                    badge: "Urgent <24h",
+                    scenes: 14,
+                    ratePerScene: 5000,
+                  },
+                ],
+                listPrice: 2032241,
+                vatPct: 0.05,
+              },
+              note: "Volume procurement saved customer $584K (29% off list price). Edit any input to recompute live.",
             },
           ],
         },
@@ -218,18 +268,30 @@ const SEED_LINES: SeedLine[] = [
                 "SAR overall F1 0.90+, mainly affected by small-sample class (bomber)",
               ],
             },
+          ],
+          interactive: [
             {
-              heading: "Commercial Logic",
-              rows: [
-                { Batch: "Batch 1 — V2 0304 · Universal Optical EO", Types: 10, Price: "$298,500" },
-                { Batch: "Batch 1 · Military Aircraft", Types: 29, Price: "$899,000" },
-                { Batch: "Batch 1 · Military Vessel", Types: 21, Price: "$651,000" },
-                { Batch: "Batch 1 Subtotal", Types: 60, Price: "$1,848,500" },
-                { Batch: "Batch 2 — Quotation 0312 · SAR Aircraft", Types: 5, Price: "$287,500" },
-                { Batch: "Batch 2 · SAR Vessel", Types: 4, Price: "$230,000" },
-                { Batch: "Batch 2 Subtotal", Types: 9, Price: "$517,500" },
-                { Batch: "Total", Types: 69, Price: "$2,366,000" },
-              ],
+              type: "algorithm_commercial",
+              heading: "Commercial Logic (interactive)",
+              baseline: {
+                batches: [
+                  {
+                    label: "Batch 1 — V2 0304",
+                    rows: [
+                      { group: "Universal Optical EO", types: 10, pricePerType: 29850 },
+                      { group: "Military Aircraft", types: 29, pricePerType: 31000 },
+                      { group: "Military Vessel", types: 21, pricePerType: 31000 },
+                    ],
+                  },
+                  {
+                    label: "Batch 2 — Quotation 0312",
+                    rows: [
+                      { group: "SAR Aircraft", types: 5, pricePerType: 57500 },
+                      { group: "SAR Vessel", types: 4, pricePerType: 57500 },
+                    ],
+                  },
+                ],
+              },
               bullets: [
                 "Batch 1 delivered · 20% deposit received",
                 "Batch 2 delivered · awaiting customer payment",
@@ -469,6 +531,22 @@ const SEED_LINES: SeedLine[] = [
               heading: "Strategic Goal",
               bullets: [
                 "By continuously expanding Eastern + Western vendors, provide TACTICA with unified single-API, multi-source imagery access.",
+              ],
+            },
+          ],
+          interactive: [
+            {
+              type: "vendor_commercial",
+              heading: "Vendor Quote (interactive)",
+              baseline: {
+                integratedEast: 2,
+                inDev: 1,
+                pricePerVendor: 0,
+                westernVendors: 0,
+              },
+              bullets: [
+                "Set the per-vendor integration fee + Western count to forecast the combined quote.",
+                "Eastern integrated vendors are already validated through R1.",
               ],
             },
           ],

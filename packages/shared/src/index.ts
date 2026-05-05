@@ -1,6 +1,7 @@
 export * from "./auth.js";
 export * from "./project.js";
 export * from "./scenario.js";
+export * from "./commercial.js";
 export * from "./tickets.js";
 export * from "./agent.js";
 export * from "./requirement-line.js";

@@ -1,12 +1,21 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RotateCcw } from "lucide-react";
+import type { Ticket } from "@eo-tactica/shared";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRequirementLine } from "@/hooks/api/requirement-lines";
 import { formatAed, cn } from "@/lib/utils";
 import { TicketAffordance } from "@/components/tickets/TicketAffordance";
 import { useTicketsBySource } from "@/hooks/api/tickets";
+import {
+  InteractiveSection,
+  type InteractiveBlock,
+} from "@/components/origen/InteractiveCommercial";
 
 interface LinePageProps {
   code: string;
@@ -34,6 +43,7 @@ interface Workstream {
   status: string;
   statusTone: "ok" | "warn" | "alert" | "neutral";
   sections: ContentSection[];
+  interactive?: InteractiveBlock[];
 }
 
 interface KeyAsk {
@@ -70,7 +80,15 @@ const TONE_DOT = {
   alert: "bg-status-danger",
 } as const;
 
-function KpiBand({ tiles }: { tiles: KpiTile[] }) {
+function KpiBand({
+  tiles,
+  values,
+  onChange,
+}: {
+  tiles: KpiTile[];
+  values: string[];
+  onChange: (idx: number, next: string) => void;
+}) {
   if (!tiles.length) return null;
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -82,14 +100,14 @@ function KpiBand({ tiles }: { tiles: KpiTile[] }) {
             TONE_BORDER[tile.tone ?? "neutral"],
           )}
         >
-          <div
+          <Input
+            value={values[i] ?? tile.value}
+            onChange={(e) => onChange(i, e.target.value)}
             className={cn(
-              "text-2xl font-semibold tracking-tight",
+              "h-auto px-0 py-0 border-0 bg-transparent shadow-none focus-visible:ring-0 text-2xl font-semibold tracking-tight",
               TONE_TEXT[tile.tone ?? "ok"],
             )}
-          >
-            {tile.value}
-          </div>
+          />
           <div className="mt-1 text-[11px] uppercase tracking-wider text-ink-700">
             {tile.label}
           </div>
@@ -211,6 +229,9 @@ function WorkstreamCard({ ws }: { ws: Workstream }) {
         {ws.sections.map((s, i) => (
           <Section key={i} section={s} />
         ))}
+        {ws.interactive?.map((block, i) => (
+          <InteractiveSection key={`int-${i}`} block={block} />
+        ))}
       </CardContent>
     </Card>
   );
@@ -268,6 +289,21 @@ export function LinePage({ code }: LinePageProps) {
 
   const data = line.data;
   const md = (data.metadata ?? {}) as LineMetadata;
+  return <LineBody data={data} md={md} t={t} ticketsBySource={tickets.data?.bySource} />;
+}
+
+interface LineBodyProps {
+  data: NonNullable<ReturnType<typeof useRequirementLine>["data"]>;
+  md: LineMetadata;
+  t: ReturnType<typeof useTranslation>["t"];
+  ticketsBySource: Record<string, Ticket> | undefined;
+}
+
+function LineBody({ data, md, t, ticketsBySource }: LineBodyProps) {
+  const baselineKpiValues = (md.kpiTiles ?? []).map((tile) => tile.value);
+  const [kpiValues, setKpiValues] = useState<string[]>(baselineKpiValues);
+  const dirty =
+    JSON.stringify(kpiValues) !== JSON.stringify(baselineKpiValues);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl">
@@ -295,8 +331,18 @@ export function LinePage({ code }: LinePageProps) {
               {formatAed(data.contractValueAed)}
             </span>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!dirty}
+            onClick={() => setKpiValues(baselineKpiValues)}
+            title="Reset KPI tile values to baseline"
+          >
+            <RotateCcw size={12} className="me-1" />
+            Reset KPIs
+          </Button>
           <TicketAffordance
-            ticket={tickets.data?.bySource[data.code] ?? null}
+            ticket={ticketsBySource?.[data.code] ?? null}
             prefill={{
               title: `${data.code} · ${data.name}`,
               criticality: "tier_3",
@@ -307,7 +353,19 @@ export function LinePage({ code }: LinePageProps) {
         </div>
       </header>
 
-      {md.kpiTiles && md.kpiTiles.length > 0 && <KpiBand tiles={md.kpiTiles} />}
+      {md.kpiTiles && md.kpiTiles.length > 0 && (
+        <KpiBand
+          tiles={md.kpiTiles}
+          values={kpiValues}
+          onChange={(idx, next) =>
+            setKpiValues((vals) => {
+              const out = vals.slice();
+              out[idx] = next;
+              return out;
+            })
+          }
+        />
+      )}
 
       <Card>
         <CardHeader className="pb-3">

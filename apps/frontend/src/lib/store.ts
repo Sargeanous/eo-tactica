@@ -35,6 +35,19 @@ function readPersistedLocale(): Locale {
   }
 }
 
+/**
+ * Live, per-block financial contribution that an interactive scenario
+ * pushes whenever its inputs change. Command Center sums the active set
+ * and uses the result instead of the static API KPIs whenever at least
+ * one block has reported.
+ *
+ * Key convention: `<lineCode>:<blockKind>` (e.g. "R1:imagery").
+ */
+export interface LineFinancialContribution {
+  confirmedQuoteAed: number;
+  invoicedAed: number;
+}
+
 interface AppState {
   token: string | null;
   user: SessionUser | null;
@@ -42,6 +55,7 @@ interface AppState {
   scenario: Scenario;
   sidebarCollapsed: boolean;
   collapsedGroups: Record<string, boolean>;
+  lineFinancials: Record<string, LineFinancialContribution>;
   setSession: (token: string, user: SessionUser) => void;
   clearSession: () => void;
   setLocale: (l: Locale) => void;
@@ -49,6 +63,8 @@ interface AppState {
   resetScenario: () => void;
   toggleSidebar: () => void;
   toggleGroup: (id: string) => void;
+  setLineFinancial: (key: string, contribution: LineFinancialContribution) => void;
+  clearLineFinancials: (codePrefix?: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -58,6 +74,7 @@ export const useAppStore = create<AppState>((set) => ({
   scenario: DEFAULT_SCENARIO,
   sidebarCollapsed: false,
   collapsedGroups: {},
+  lineFinancials: {},
   setSession: (token, user) => {
     try {
       sessionStorage.setItem(TOKEN_KEY, token);
@@ -98,4 +115,17 @@ export const useAppStore = create<AppState>((set) => ({
         [id]: !state.collapsedGroups[id],
       },
     })),
+  setLineFinancial: (key, contribution) =>
+    set((state) => ({
+      lineFinancials: { ...state.lineFinancials, [key]: contribution },
+    })),
+  clearLineFinancials: (codePrefix) =>
+    set((state) => {
+      if (!codePrefix) return { lineFinancials: {} };
+      const next: Record<string, LineFinancialContribution> = {};
+      for (const [k, v] of Object.entries(state.lineFinancials)) {
+        if (!k.startsWith(`${codePrefix}:`)) next[k] = v;
+      }
+      return { lineFinancials: next };
+    }),
 }));

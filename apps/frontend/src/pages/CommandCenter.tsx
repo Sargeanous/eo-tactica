@@ -1,13 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { CalendarClock, Flag, FileCheck2, Wallet } from "lucide-react";
+import { CalendarClock, Flag, FileCheck2, Wallet, Zap } from "lucide-react";
 import { useProjectKpis } from "@/hooks/api/projects";
 import { useRequirementLines } from "@/hooks/api/requirement-lines";
 import { useProjects } from "@/hooks/api/projects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatAed, cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 
 interface ProjectMetadata {
   ownerName?: string;
@@ -28,6 +30,7 @@ interface KpiCardProps {
   icon: typeof Wallet;
   href: string;
   tone: "ok" | "warn" | "alert";
+  live?: boolean;
 }
 
 const TONE_BORDER = {
@@ -41,7 +44,15 @@ const TONE_TEXT = {
   alert: "text-status-danger",
 };
 
-function KpiCard({ label, primary, hint, icon: Icon, href, tone }: KpiCardProps) {
+function KpiCard({
+  label,
+  primary,
+  hint,
+  icon: Icon,
+  href,
+  tone,
+  live,
+}: KpiCardProps) {
   return (
     <Link
       to={href}
@@ -51,8 +62,17 @@ function KpiCard({ label, primary, hint, icon: Icon, href, tone }: KpiCardProps)
       )}
     >
       <div className="flex items-start justify-between">
-        <div className="text-[11px] uppercase tracking-wider text-ink-700">
+        <div className="text-[11px] uppercase tracking-wider text-ink-700 flex items-center gap-1.5">
           {label}
+          {live && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-brand-100 text-brand-900 border border-brand-300/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider"
+              title="Recomputed from your edits in R1..R5"
+            >
+              <Zap size={9} />
+              live
+            </span>
+          )}
         </div>
         <Icon size={14} className="text-ink-500" />
       </div>
@@ -71,9 +91,29 @@ export default function CommandCenter() {
   const kpis = useProjectKpis();
   const lines = useRequirementLines();
   const projects = useProjects();
+  const lineFinancials = useAppStore((s) => s.lineFinancials);
+  const clearLineFinancials = useAppStore((s) => s.clearLineFinancials);
 
   const project = projects.data?.items[0];
   const projMeta = (project?.metadata ?? {}) as ProjectMetadata;
+
+  // Sum the live contributions reported by interactive scenarios on the
+  // per-line pages. When at least one block has reported, prefer the
+  // live value over the static API KPI.
+  const liveTotals = Object.values(lineFinancials).reduce(
+    (acc, c) => ({
+      confirmedQuoteAed: acc.confirmedQuoteAed + c.confirmedQuoteAed,
+      invoicedAed: acc.invoicedAed + c.invoicedAed,
+    }),
+    { confirmedQuoteAed: 0, invoicedAed: 0 },
+  );
+  const hasLive = Object.keys(lineFinancials).length > 0;
+  const confirmedQuote = hasLive
+    ? liveTotals.confirmedQuoteAed
+    : (kpis.data?.confirmedQuoteAed ?? 0);
+  const invoiced = hasLive
+    ? liveTotals.invoicedAed
+    : (kpis.data?.invoicedAed ?? 0);
 
   // Derive the upcoming-quotes hint from the live lines list.
   const upcomingHints = (lines.data?.items ?? [])
@@ -127,44 +167,63 @@ export default function CommandCenter() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            label="Confirmed Quote (R1)"
-            primary={formatAed(kpis.data?.confirmedQuoteAed ?? 0)}
-            hint="Imagery $1.45M + CV $2.37M"
-            icon={Wallet}
-            href="/r1"
-            tone="ok"
-          />
-          <KpiCard
-            label="Invoiced"
-            primary={formatAed(kpis.data?.invoicedAed ?? 0)}
-            hint="R1 Imagery WO · Awaiting Customer Payment"
-            icon={FileCheck2}
-            href="/r1"
-            tone="ok"
-          />
-          <KpiCard
-            label="Upcoming Quotes"
-            primary="This Week"
-            hint={
-              upcomingHints.length > 0
-                ? upcomingHints.join("  ·  ")
-                : "R2 · WO Wed · R3 · Fri · R4 / R5 · Scope TBD"
-            }
-            icon={CalendarClock}
-            href="/project"
-            tone="warn"
-          />
-          <KpiCard
-            label="High-Priority Asks"
-            primary={String(kpis.data?.highPriorityAsks ?? 0)}
-            hint="Red-flag items needing immediate action"
-            icon={Flag}
-            href="/collab"
-            tone="alert"
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              label="Confirmed Quote"
+              primary={formatAed(confirmedQuote)}
+              hint="Imagery $1.45M + CV $2.37M"
+              icon={Wallet}
+              href="/r1"
+              tone="ok"
+              live={hasLive}
+            />
+            <KpiCard
+              label="Invoiced"
+              primary={formatAed(invoiced)}
+              hint="R1 Imagery WO · Awaiting Customer Payment"
+              icon={FileCheck2}
+              href="/r1"
+              tone="ok"
+              live={hasLive}
+            />
+            <KpiCard
+              label="Upcoming Quotes"
+              primary="This Week"
+              hint={
+                upcomingHints.length > 0
+                  ? upcomingHints.join("  ·  ")
+                  : "R2 · WO Wed · R3 · Fri · R4 / R5 · Scope TBD"
+              }
+              icon={CalendarClock}
+              href="/project"
+              tone="warn"
+            />
+            <KpiCard
+              label="High-Priority Asks"
+              primary={String(kpis.data?.highPriorityAsks ?? 0)}
+              hint="Red-flag items needing immediate action"
+              icon={Flag}
+              href="/collab"
+              tone="alert"
+            />
+          </div>
+          {hasLive && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                Headline tiles are recomputed live from edits across R1..R5.
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearLineFinancials()}
+                className="h-7"
+              >
+                Clear live overrides
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <section className="space-y-3">

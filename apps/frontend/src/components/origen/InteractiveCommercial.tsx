@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   computeAlgorithmCommercial,
   computeImageryCommercial,
@@ -7,12 +7,12 @@ import {
   type ImageryScenarioInput,
   type VendorScenarioInput,
 } from "@eo-tactica/shared";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 
 type ImageryBlock = {
   type: "imagery_commercial";
@@ -79,12 +79,28 @@ function clone<T>(x: T): T {
 
 // ---------- Imagery (R1.A) ----------
 
-function ImageryView({ block }: { block: ImageryBlock }) {
+function ImageryView({
+  block,
+  lineCode,
+}: {
+  block: ImageryBlock;
+  lineCode: string;
+}) {
   const [state, setState] = useState<ImageryScenarioInput>(() =>
     clone(block.baseline),
   );
   const out = useMemo(() => computeImageryCommercial(state), [state]);
   const dirty = JSON.stringify(state) !== JSON.stringify(block.baseline);
+
+  // Imagery commercial contributes to BOTH the confirmed quote AND the
+  // invoiced total (R1 imagery WO is already on the customer's desk).
+  const setLineFinancial = useAppStore((s) => s.setLineFinancial);
+  useEffect(() => {
+    setLineFinancial(`${lineCode}:imagery`, {
+      confirmedQuoteAed: out.finalExVat,
+      invoicedAed: out.finalExVat,
+    });
+  }, [out, lineCode, setLineFinancial]);
 
   return (
     <Card className="border-brand-300/40">
@@ -211,12 +227,28 @@ function ImageryView({ block }: { block: ImageryBlock }) {
 
 // ---------- Algorithm (R1.B) ----------
 
-function AlgorithmView({ block }: { block: AlgorithmBlock }) {
+function AlgorithmView({
+  block,
+  lineCode,
+}: {
+  block: AlgorithmBlock;
+  lineCode: string;
+}) {
   const [state, setState] = useState<AlgoScenarioInput>(() =>
     clone(block.baseline),
   );
   const out = useMemo(() => computeAlgorithmCommercial(state), [state]);
   const dirty = JSON.stringify(state) !== JSON.stringify(block.baseline);
+
+  // Algorithm batches contribute to confirmed quote, but invoiced is 0
+  // until the customer signs final acceptance (per dashboard footer).
+  const setLineFinancial = useAppStore((s) => s.setLineFinancial);
+  useEffect(() => {
+    setLineFinancial(`${lineCode}:algorithm`, {
+      confirmedQuoteAed: out.totalPrice,
+      invoicedAed: 0,
+    });
+  }, [out, lineCode, setLineFinancial]);
 
   return (
     <Card className="border-brand-300/40">
@@ -322,12 +354,28 @@ function AlgorithmView({ block }: { block: AlgorithmBlock }) {
 
 // ---------- Vendor (R3) ----------
 
-function VendorView({ block }: { block: VendorBlock }) {
+function VendorView({
+  block,
+  lineCode,
+}: {
+  block: VendorBlock;
+  lineCode: string;
+}) {
   const [state, setState] = useState<VendorScenarioInput>(() =>
     clone(block.baseline),
   );
   const out = useMemo(() => computeVendorCommercial(state), [state]);
   const dirty = JSON.stringify(state) !== JSON.stringify(block.baseline);
+
+  // Vendor integration fees count as future confirmed quote once a
+  // per-vendor fee is set; invoiced stays 0 until the quote is signed.
+  const setLineFinancial = useAppStore((s) => s.setLineFinancial);
+  useEffect(() => {
+    setLineFinancial(`${lineCode}:vendor`, {
+      confirmedQuoteAed: out.combinedFee,
+      invoicedAed: 0,
+    });
+  }, [out, lineCode, setLineFinancial]);
 
   return (
     <Card className="border-brand-300/40">
@@ -442,10 +490,18 @@ function Row({
 
 // ---------- dispatcher ----------
 
-export function InteractiveSection({ block }: { block: InteractiveBlock }) {
-  if (block.type === "imagery_commercial") return <ImageryView block={block} />;
+export function InteractiveSection({
+  block,
+  lineCode,
+}: {
+  block: InteractiveBlock;
+  lineCode: string;
+}) {
+  if (block.type === "imagery_commercial")
+    return <ImageryView block={block} lineCode={lineCode} />;
   if (block.type === "algorithm_commercial")
-    return <AlgorithmView block={block} />;
-  if (block.type === "vendor_commercial") return <VendorView block={block} />;
+    return <AlgorithmView block={block} lineCode={lineCode} />;
+  if (block.type === "vendor_commercial")
+    return <VendorView block={block} lineCode={lineCode} />;
   return null;
 }

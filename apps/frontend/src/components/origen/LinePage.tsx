@@ -203,7 +203,7 @@ function Section({ section }: { section: ContentSection }) {
   );
 }
 
-function WorkstreamCard({ ws }: { ws: Workstream }) {
+function WorkstreamCard({ ws, lineCode }: { ws: Workstream; lineCode: string }) {
   const statusToneClass =
     ws.statusTone === "ok"
       ? "border-brand-300/40 text-brand-700 bg-brand-50"
@@ -230,7 +230,11 @@ function WorkstreamCard({ ws }: { ws: Workstream }) {
           <Section key={i} section={s} />
         ))}
         {ws.interactive?.map((block, i) => (
-          <InteractiveSection key={`int-${i}`} block={block} />
+          <InteractiveSection
+            key={`int-${i}`}
+            block={block}
+            lineCode={lineCode}
+          />
         ))}
       </CardContent>
     </Card>
@@ -402,7 +406,7 @@ function LineBody({ data, md, t, ticketsBySource }: LineBodyProps) {
       {md.workstreams && md.workstreams.length > 0 && (
         <div className="space-y-4">
           {md.workstreams.map((ws) => (
-            <WorkstreamCard key={ws.code} ws={ws} />
+            <WorkstreamCard key={ws.code} ws={ws} lineCode={data.code} />
           ))}
         </div>
       )}
